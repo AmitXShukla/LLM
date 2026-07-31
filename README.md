@@ -2,7 +2,7 @@
 
 ### A step-by-step book for engineers, using Sanskrit, Urdu, Tamil, Telgu
 
-[![Deploy Book](https://github.com/YOUR_GITHUB_USERNAME/sanskrit-llm-book/actions/workflows/deploy.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/sanskrit-llm-book/actions/workflows/deploy.yml)
+[![Deploy Book](https://github.com/AmitXShukla/LLM/actions/workflows/deploy.yml/badge.svg)](https://github.com/AmitXShukla/LLM/actions/workflows/deploy.yml)
 
 [![Content: CC BY 4.0](https://img.shields.io/badge/content-CC--BY--4.0-lightgrey.svg)](LICENSE)
 [![Code: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE-CODE)
@@ -32,6 +32,10 @@ Together they cover almost every problem you will meet in a real low-resource la
 ---
 
 ## Chapters
+
+> 💡 Many chapters now end with a **🧑‍💻 Runnable code** section containing tested,
+> copy-paste code, colored callouts, and diagrams. The full code lives in
+> [`code/`](code/); see the table below the chapter list.
 
 ### Part 1 — Understand the machine
 | Step | Chapter | Status |
@@ -94,6 +98,41 @@ Together they cover almost every problem you will meet in a real low-resource la
 - [Who else is working on this](book/appendix/landscape.md)
 - [Should you build from scratch at all?](book/appendix/scratch-or-finetune.md)
 - [Things worth reading](book/appendix/reading.md)
+
+---
+
+## 🧑‍💻 Runnable code
+
+Every core step now ships with **tested, runnable code** in [`code/`](code/).
+Each folder is self-contained with its own README (what it does, how to run,
+hardware, and time).
+
+| Folder | What it runs | Used in |
+|---|---|---|
+| 🧠 [`code/step-01-tiny-transformer/`](code/step-01-tiny-transformer/) | A ~250-line GPT from scratch that babbles Sanskrit | Steps 1–2, 9 |
+| 🔤 [`code/step-04-sanskrit-tokenizer/`](code/step-04-sanskrit-tokenizer/) | Code-point vs. grapheme (akshara) tokenizers | Step 4 |
+| 🧹 [`code/step-06-data-audit/`](code/step-06-data-audit/) | PDFs → clean corpus, with an OCR health check | Steps 6–7 |
+| 🚀 [`code/step-11-adapt-base-model/`](code/step-11-adapt-base-model/) | LoRA/QLoRA fine-tuning: dataset → train → chat | Steps 11–13 |
+| 🧩 [`code/step-14-reasoning/`](code/step-14-reasoning/) | Verifiable rewards + GRPO, and a distillation set | Steps 14, 17 |
+
+```bash
+# quickest taste — see the Sanskrit tokenization "gotcha" in 5 seconds
+pip install regex && python code/step-04-sanskrit-tokenizer/devanagari_tokenizer.py
+```
+
+## 📚 Companion materials & downloads
+
+Longer-form notes, a full course PDF, and diagrams live in [`docs/`](docs/) and
+are indexed in [`docs/references.md`](docs/references.md).
+
+| Resource | Format | What it is |
+|---|---|---|
+| 📘 [Fine-Tuning Foundation Models](docs/reports/fine-tuning-foundation-models.pdf) | PDF (58 pp) | Full companion course: language, healthcare multimodal (ECG/X-ray/video), reasoning, private NVIDIA deployment, and an interview Q&A bank |
+| 🧠 [Tiny-transformer teaching notes](docs/notes/weekend1-tiny-transformer-teaching.md) | Markdown | Every concept in the from-scratch model, mapped to the code |
+| ✍️ [Blog: I built a tiny Sanskrit GPT](docs/notes/weekend1-blog-tiny-sanskrit-gpt.md) | Markdown | Publish-ready narrative of the tokenization gotcha |
+| 🚀 [Fine-tuning teaching notes](docs/notes/weekend2-finetuning-teaching.md) | Markdown | LoRA/QLoRA, SFT, DPO, and the road to reasoning |
+| 🗺️ [Fine-tuning architecture](docs/notes/finetuning-architecture-diagram.md) | Markdown (Mermaid) | The full pipeline + LoRA concept + roadmap diagrams |
+| 🖥️ [GPU primer (CuTile)](docs/notes/gpu-primer-cutile.md) | Markdown | Beginner explainer of GPU programming |
 
 ---
 
@@ -163,7 +202,7 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) and open an issue before sending 
 **Amit Shukla**
 
 - Website: <https://AmitXShukla.github.io/LLM/>
-- GitHub: [@AmitXShukla](https://github.com/YOUR_GITHUB_USERNAME)
+- GitHub: [@AmitXShukla](https://github.com/AmitXShukla)
 - YouTube: <https://youtube.com/@amit.shukla>
 - Contact: X.com/@ashuklax
 

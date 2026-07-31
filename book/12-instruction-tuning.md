@@ -109,3 +109,49 @@ format, without wandering off into unrelated text.
 - [Step 11](11-adapt-base-model.md) — where the knowledge came from
 - [Step 13](13-preference-tuning.md) — making the answers better
 :::
+
+---
+
+## 🧑‍💻 Runnable code for this step
+
+:::{tip} The full, tested files
+Dataset builder + trainer live in [`code/step-11-adapt-base-model/`](https://github.com/AmitXShukla/LLM/tree/main/code/step-11-adapt-base-model) (`01_make_dataset.py`, `02_finetune_lora.py`).
+:::
+
+Instruction tuning (SFT) changes the *shape* of your data from raw text to
+**pairs**. Keeping `prompt` and `completion` separate is what lets the trainer
+score the *answer only*, not the parroted question:
+
+```python
+# one line of sanskrit_sft.jsonl
+{"prompt": "Translate this Sanskrit line into English:\nअहिंसा परमो धर्मः।",
+ "completion": "Non-violence is the highest virtue."}
+```
+
+```python
+from trl import SFTTrainer, SFTConfig
+from peft import LoraConfig
+
+cfg = SFTConfig(output_dir="./adapter", num_train_epochs=3,
+                per_device_train_batch_size=2, gradient_accumulation_steps=8,
+                learning_rate=2e-4, max_length=1024,
+                completion_only_loss=True,     # ← score the answer, not the question
+                bf16=True, report_to="none")
+
+trainer = SFTTrainer(model=model, args=cfg, train_dataset=ds,
+                     peft_config=LoraConfig(r=16, lora_alpha=32,
+                                            task_type="CAUSAL_LM",
+                                            target_modules="all-linear"),
+                     processing_class=tokenizer)
+trainer.train()
+```
+
+:::{note} The SFT loss is the SAME as Step 9 🔁
+It's the same next-token cross-entropy you already wrote by hand — just with the
+prompt tokens *masked* so the model is graded only on its answer.
+:::
+
+:::{warning} Mix your task types
+A dataset that is 100% "translate" produces a translator, not an assistant. Mix
+translate / explain / complete / define so the model *generalises*.
+:::

@@ -121,3 +121,48 @@ better than the Step 13 model on your verifiable tasks.
 - [Step 13](13-preference-tuning.md) — GRPO basics
 - [Step 15](15-panini-neurosymbolic.md) — building the checkers
 :::
+
+---
+
+## 🧑‍💻 Runnable code for this step
+
+:::{tip} The full, tested files
+[`code/step-14-reasoning/`](https://github.com/AmitXShukla/LLM/tree/main/code/step-14-reasoning) has the reward function, a GRPO training setup, and example datasets for both routes.
+:::
+
+There are two ways to get reasoning into a model:
+
+```{mermaid}
+flowchart TD
+    A[Want a thinking model?] --> B{Have a strong<br/>reasoner to copy?}
+    B -->|yes ✅| C[🅐 Distillation<br/>SFT on its think traces<br/>cheap · stable · best for small models]
+    B -->|no| D[🅑 RLVR + GRPO<br/>verifier rewards correct answers<br/>reasoning emerges]
+```
+
+The heart of RLVR is a **verifiable reward** — a plain function, no human labels,
+no reward model:
+
+```python
+import re
+def reward_fn(completions, ground_truth, **kw):
+    rewards = []
+    for text, truth in zip(completions, ground_truth):
+        r = 0.1 if re.search(r"<think>.*?</think>", text, re.DOTALL) else 0.0   # format
+        m = re.search(r"\\boxed\{([^}]*)\}", text)
+        r += 1.0 if (m and m.group(1).strip() == str(truth).strip()) else 0.0   # correctness
+        rewards.append(r)
+    return rewards
+```
+
+:::{important} Why Sanskrit is a *great* fit for this 🕉️
+Panini's grammar makes sandhi, segmentation, and meter **checkable by rule**. Swap
+the math checker above for a grammar checker and you have a verifiable reward for
+a Sanskrit reasoner — something English can't easily do. (See the next chapter.)
+:::
+
+:::{note} RLHF vs. RLVR
+**RLHF** learns a reward *model* from human preferences (good for fuzzy
+"helpfulness"). **RLVR** uses a deterministic *verifier* for binary correctness
+(good for math, code, and rule-governed language). **GRPO** is the value-free RL
+algorithm both use.
+:::

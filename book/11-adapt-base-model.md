@@ -162,3 +162,57 @@ much of its general ability.
 - [Step 4](04-sanskrit-tokenizer.md) — the tokenizer you are grafting on
 - [Should you build from scratch at all?](appendix/scratch-or-finetune.md)
 :::
+
+---
+
+## 🧑‍💻 Runnable code for this step
+
+:::{tip} The full, tested files
+[`code/step-11-adapt-base-model/`](https://github.com/AmitXShukla/LLM/tree/main/code/step-11-adapt-base-model) has three staged scripts. Start with the safe dry run: `python 02_finetune_lora.py --dry-run` (builds everything, downloads nothing).
+:::
+
+### The big idea: LoRA 🧩
+
+Fine-tuning *all* of a billion weights needs a cluster. **LoRA** freezes the giant
+original weight `W` and trains two tiny matrices whose low-rank product is added
+to it — well under 1% of the parameters:
+
+```{mermaid}
+flowchart LR
+    X([input x]) --> W["W · x — FROZEN"]
+    X --> A["A · x — down-project rank r"]
+    A --> B["B · (A·x) — up-project"]
+    W --> P((＋))
+    B --> P
+    P --> Y([output = W + B·A])
+```
+
+```python
+from peft import LoraConfig
+lora = LoraConfig(
+    r=16, lora_alpha=32, lora_dropout=0.05,
+    bias="none", task_type="CAUSAL_LM",
+    target_modules="all-linear",   # robust across Qwen / Gemma / Llama / Sarvam
+)
+```
+
+**QLoRA** goes further: load the frozen base in 4-bit so a 7B model fits on one
+GPU. On your DGX Spark, use **bf16, never fp16**.
+
+```python
+import torch
+from transformers import BitsAndBytesConfig
+qlora = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
+                           bnb_4bit_use_double_quant=True,
+                           bnb_4bit_compute_dtype=torch.bfloat16)
+```
+
+:::{important} Prove it worked
+Call `trainer.model.print_trainable_parameters()`. If it says ~100%, your adapter
+didn't attach. It should read *well under 1%*. 🎯
+:::
+
+:::{seealso} Go deeper
+- 🗺️ Architecture diagram: [`docs/notes/finetuning-architecture-diagram.md`](https://github.com/AmitXShukla/LLM/tree/main/docs/notes/finetuning-architecture-diagram.md)
+- 🚀 Teaching notes: [`docs/notes/weekend2-finetuning-teaching.md`](https://github.com/AmitXShukla/LLM/tree/main/docs/notes/weekend2-finetuning-teaching.md)
+:::

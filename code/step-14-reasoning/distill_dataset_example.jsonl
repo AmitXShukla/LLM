@@ -1,0 +1,2 @@
+{"prompt": "A dose is 5 mg/kg for a 12 kg child. Total dose?", "completion": "<think>5 mg/kg × 12 kg = 60 mg. Units: mg/kg × kg = mg.</think>\n\\boxed{60 mg}"}
+{"prompt": "Sandhi: तत् + अपि = ?", "completion": "<think>Before a vowel, त् becomes द. So तत् + अपि joins to तदपि.</think>\n\\boxed{तदपि}"}

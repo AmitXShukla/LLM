@@ -17,6 +17,14 @@ evaluate
 matplotlib
 tqdm
 
+# Tokenizer + data-audit code (Steps 4, 6-7)
+regex          # grapheme-cluster splitting for Devanagari (code/step-04)
+pypdf          # PDF text extraction for the data audit (code/step-06)
+
+# QLoRA 4-bit fine-tuning (Step 11). On DGX Spark install inside the NVIDIA
+# PyTorch container; use bf16, never fp16.
+bitsandbytes
+
 # Serving and quantization (Step 18)
 # vllm
 

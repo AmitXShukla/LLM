@@ -71,3 +71,30 @@ accordingly.
 - [Step 6](06-collect-data.md) — OCR is how you get more data
 - [Step 7](07-clean-data.md) — cleaning up OCR errors
 :::
+
+---
+
+## 🧑‍💻 The universal recipe applies here too
+
+Whether it's a manuscript image for OCR or a medical X-ray, the pattern is the
+same: **encoder → head**, using transfer learning.
+
+```{mermaid}
+flowchart LR
+    A[🖼️ image] --> B[vision encoder<br/>ResNet / ViT]
+    B --> C[embeddings]
+    C --> D["head or projector"]
+    D --> E[label / text]
+```
+
+For **manuscript OCR**, the transfer-learning spectrum is your friend: start from
+a pretrained vision (or vision-language) model and fine-tune on your script — you
+need far less labelled data than training from scratch. The same encoder that
+reads an X-ray reads a page of Devanagari; only the head and the training data
+change.
+
+:::{tip} Reuse the medical vision code
+The transfer-learning + LoRA pattern for images is shown with runnable code in
+[Step 24 — Medical](24-medical.md) (🦴 X-ray section). It transfers directly to
+manuscript classification and OCR fine-tuning.
+:::

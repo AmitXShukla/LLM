@@ -103,3 +103,50 @@ quality after compression **in Sanskrit**.
 - [Step 8](08-modern-architecture.md) — why GQA mattered
 - [Step 25](25-release.md) — publishing quantized versions
 :::
+
+---
+
+## 🖥️ Serving privately on your own NVIDIA hardware
+
+For healthcare especially, the data often *cannot leave the building* — so you
+serve on your own GPUs. Know what each layer of the NVIDIA stack is **for**:
+
+```{mermaid}
+flowchart TD
+    NIM["🟢 NIM — OpenAI-compatible container<br/>pull → run → serve in hours"]
+    TRTLLM["⚙️ TensorRT-LLM — LLM optimizer<br/>FP8/FP4, paged KV, LoRA serving"]
+    TRITON["📦 Triton — multi-framework server<br/>your ECG / X-ray / ONNX models"]
+    DYNAMO["🌐 Dynamo — distributed serving<br/>huge & reasoning models, disaggregated"]
+    NIM --> TRTLLM
+    NIM --> TRITON
+    DYNAMO --> TRTLLM
+```
+
+| You want to… | Use |
+|--------------|-----|
+| Serve a standard LLM privately, fast | 🟢 **NIM** (or open-source **vLLM**) |
+| Serve custom / non-LLM models (ECG, X-ray) | 📦 **Triton** with a TensorRT engine |
+| Serve huge or **reasoning** models across many GPUs | 🌐 **Dynamo** |
+| Squeeze max single-model speed | ⚙️ **TensorRT-LLM** + quantization |
+
+```bash
+# A NIM exposes an OpenAI-compatible endpoint — your app code barely changes.
+docker run --gpus all -p 8000:8000 -e NGC_API_KEY=$NGC_API_KEY \
+  nvcr.io/nim/meta/llama-3.1-8b-instruct:latest
+```
+
+:::{important} Why on-prem for healthcare 🔒
+PHI (patient data) usually can't go to a public API. Serving on your own NVIDIA
+hardware keeps data in the building, gives predictable latency/cost, and supports
+the audit trail regulators expect.
+:::
+
+:::{note} Speed levers, in order
+**(1) quantize** (FP8/FP4/INT4) → **(2) batch** (continuous batching + paged KV
+cache) → **(3) speculate** (draft-then-verify) → **(4) disaggregate** prefill and
+decode for reasoning workloads.
+:::
+
+:::{seealso} Full deployment chapter
+📘 [`docs/reports/fine-tuning-foundation-models.pdf`](https://github.com/AmitXShukla/LLM/tree/main/docs/reports/fine-tuning-foundation-models.pdf) — Part VI covers this in depth, plus on-prem architecture and MLOps.
+:::

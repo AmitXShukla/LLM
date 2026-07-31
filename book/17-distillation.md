@@ -73,3 +73,29 @@ tests.
 - [Step 15](15-panini-neurosymbolic.md) — rule-checked traces make better teachers
 - [Step 18](18-quantization-serving.md) — the other way to get small
 :::
+
+---
+
+## 🧑‍💻 Runnable code for this step
+
+Distillation = train a small **student** on a big **teacher's** outputs. For
+reasoning, that means SFT on the teacher's `<think>` traces (keep only the ones
+the verifier says are correct):
+
+```python
+# one line of a distillation set — the teacher's full reasoning + answer
+{"prompt": "A dose is 5 mg/kg for a 12 kg child. Total dose?",
+ "completion": "<think>5 mg/kg × 12 kg = 60 mg. Units: mg/kg × kg = mg.</think>\n\\boxed{60 mg}"}
+```
+
+Then it's just SFT (Step 12). See [`code/step-14-reasoning/distill_dataset_example.jsonl`](https://github.com/AmitXShukla/LLM/tree/main/code/step-14-reasoning).
+
+:::{tip} The pragmatic default 💡
+For most teams and most hardware, **distillation beats DIY reinforcement
+learning**: cheaper, stable, and often *better* for small models. DeepSeek showed
+distilling R1 into small Qwen/Llama models beat running RL on them directly.
+:::
+
+The same idea shrinks a big ECG or X-ray model into a compact one for a wearable
+or edge device — a "teacher → student" transfer that keeps most of the accuracy at
+a fraction of the size.

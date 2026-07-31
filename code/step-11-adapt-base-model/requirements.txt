@@ -1,0 +1,8 @@
+# Install INSIDE the NVIDIA PyTorch container on DGX Spark (see README).
+# torch is intentionally NOT pinned here: use the container's Blackwell build.
+transformers>=5.0
+peft>=0.19
+trl>=1.7
+datasets>=5.0
+accelerate>=1.0
+bitsandbytes>=0.43   # 4-bit / QLoRA; required only for --4bit

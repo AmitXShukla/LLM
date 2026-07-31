@@ -44,3 +44,34 @@ Possible uses: recitation videos where mouth position matters, teaching
 material, ritual documentation. Genuine, but narrow.
 
 Do it last, if at all.
+
+---
+
+## 🧑‍💻 Runnable code for this step
+
+Video just adds **time** to vision. The simplest strong approach: run a per-frame
+CNN, then a small Transformer over the sequence of frame features.
+
+```python
+import torch, torch.nn as nn, torchvision
+
+class VideoBehaviorNet(nn.Module):
+    """Per-frame CNN features -> temporal Transformer -> behaviour class."""
+    def __init__(self, n_classes=4, d=512, n_heads=8, n_layers=2):
+        super().__init__()
+        backbone = torchvision.models.resnet18(weights="IMAGENET1K_V1")
+        self.feat = nn.Sequential(*list(backbone.children())[:-1])   # feature per frame
+        enc = nn.TransformerEncoderLayer(d, n_heads, batch_first=True)
+        self.temporal = nn.TransformerEncoder(enc, n_layers)
+        self.cls = nn.Sequential(nn.LayerNorm(d), nn.Linear(d, n_classes))
+    def forward(self, x):                     # x: (B, T, C, H, W)
+        B, T = x.shape[:2]
+        f = self.feat(x.flatten(0, 1)).flatten(1).view(B, T, -1)
+        return self.cls(self.temporal(f).mean(dim=1))   # temporal pooling
+```
+
+:::{important} Privacy-first for patient video 🕶️
+Faces are PHI-adjacent. For behaviour tasks (falls, gait, agitation), prefer a
+**pose-based** pipeline: extract skeletal keypoints first, then model the *pose
+sequence*. It's accurate, cheaper, and stores no faces — an ethics *and* cost win.
+:::

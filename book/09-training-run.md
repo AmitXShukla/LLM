@@ -135,3 +135,42 @@ explain to someone else.
 - [Step 2](02-break-it.md) — the failures you are now recognising
 - [Hardware appendix](appendix/hardware.md) — what your machine can handle
 :::
+
+---
+
+## 🧑‍💻 Runnable code for this step
+
+:::{tip} The full, tested file
+[`code/step-01-tiny-transformer/train_sanskrit_gpt.py`](https://github.com/AmitXShukla/LLM/tree/main/code/step-01-tiny-transformer) is the complete ~250-line model + training loop + sampler. Run `python train_sanskrit_gpt.py --smoke` for a 30-second sanity run.
+:::
+
+The entire training loop is four lines repeated a few thousand times. If you
+understand these four, you understand training:
+
+```python
+for step in range(max_iters):
+    xb, yb = get_batch(train_data)   # a window of aksharas, and the same shifted by 1
+    _, loss = model(xb, yb)          # forward: predict, measure surprise (cross-entropy)
+    optimizer.zero_grad()            # clear last step's gradients
+    loss.backward()                  # backward: blame each weight for the error
+    optimizer.step()                 # nudge every weight a little the right way
+```
+
+```{mermaid}
+flowchart LR
+    A[batch of aksharas] --> B[model predicts<br/>next akshara]
+    B --> C[loss = how surprised?]
+    C --> D[loss.backward<br/>compute gradients]
+    D --> E[optimizer.step<br/>nudge weights]
+    E --> A
+```
+
+:::{note} What to watch 👀
+**Train loss** should fall then flatten. **Val loss** should follow, then turn
+*up* when you start overfitting. On a tiny corpus that happens fast — that's not
+a bug, it's the model telling you *"feed me more data."*
+:::
+
+:::{seealso} Go deeper
+- 🧠 Teaching notes (every concept, mapped to the code): [`docs/notes/weekend1-tiny-transformer-teaching.md`](https://github.com/AmitXShukla/LLM/tree/main/docs/notes/weekend1-tiny-transformer-teaching.md)
+:::

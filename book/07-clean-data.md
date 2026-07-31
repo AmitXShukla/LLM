@@ -137,3 +137,40 @@ a clean train/validation/test split.
 - [Step 6](06-collect-data.md) — collecting it
 - [Step 10](10-evaluation.md) — why contamination checking mattered
 :::
+
+---
+
+## 🧑‍💻 Runnable code for this step
+
+:::{tip} The full, tested file
+[`code/step-06-data-audit/prepare_data.py`](https://github.com/AmitXShukla/LLM/tree/main/code/step-06-data-audit) turns PDFs/text in `./data` into one clean `corpus.txt` — and, crucially, *measures* how much real Devanagari it found so you know which files need OCR.
+:::
+
+The honest part of this script is that it doesn't pretend a scanned PDF worked.
+It scores each file and tells you the truth:
+
+```python
+DEV_START, DEV_END = 0x0900, 0x097F      # the Devanagari Unicode block
+
+def devanagari_ratio(text):
+    meaningful = [c for c in text if not c.isspace()]
+    if not meaningful: return 0.0
+    dev = sum(1 for c in meaningful if DEV_START <= ord(c) <= DEV_END)
+    return dev / len(meaningful)
+# ...
+#   sample_corpus.txt   devanagari=100.0%  chars_kept=845   [OK]
+#   old_scan.pdf        devanagari=  2.3%  chars_kept= 11    [⚠ LOW → needs OCR]
+```
+
+```{mermaid}
+flowchart LR
+    A[📄 PDFs / text in ./data] --> B{Devanagari<br/>ratio ≥ 30%?}
+    B -->|yes ✅| C[clean + NFC normalize] --> D[(corpus.txt)]
+    B -->|no ⚠️| E[OCR with Tesseract<br/>-l san+hin] --> A
+```
+
+:::{warning} This is where projects actually get stuck
+Not the neural network — the data. Half of real Sanskrit PDFs are scanned images
+or legacy (non-Unicode) fonts that extract as garbage. Budget most of your time
+here. 🧹
+:::

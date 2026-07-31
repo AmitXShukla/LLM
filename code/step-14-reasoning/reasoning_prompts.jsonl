@@ -1,0 +1,3 @@
+{"prompt": "A dose is 5 mg/kg for a 12 kg child. Total dose? Think step by step, then give \\boxed{answer}.", "ground_truth": "60 mg"}
+{"prompt": "Sandhi: तत् + अपि = ? Think, then \\boxed{answer}.", "ground_truth": "तदपि"}
+{"prompt": "How many syllables (aksharas) in 'नमस्ते'? Think, then \\boxed{answer}.", "ground_truth": "3"}

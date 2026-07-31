@@ -105,3 +105,31 @@ examples, without knowing which is which.
 - [Step 14](14-reasoning.md) — GRPO applied to reasoning
 - [Step 15](15-panini-neurosymbolic.md) — where your verifiable rewards come from
 :::
+
+---
+
+## 🧑‍💻 Runnable code for this step
+
+Preference tuning teaches the model to prefer the *better* of two answers.
+**DPO** does this with no reward model and no RL loop — just a `chosen` vs.
+`rejected` pair:
+
+```python
+# one line of prefs.jsonl
+{"prompt": "Explain 'karma' briefly.",
+ "chosen":   "Karma is the principle that intentional actions carry moral consequences...",
+ "rejected": "karma is a hindu thing about luck idk"}
+```
+
+```python
+from trl import DPOTrainer, DPOConfig
+cfg = DPOConfig(output_dir="./dpo-adapter", beta=0.1,   # beta = how hard to push vs. reference
+                learning_rate=5e-6, num_train_epochs=1, bf16=True, report_to="none")
+DPOTrainer(model=model, args=cfg, train_dataset=ds, processing_class=tok).train()
+```
+
+:::{important} Order matters ➡️
+Do **SFT first, then DPO.** DPO assumes a model that already gives reasonable
+answers; running it on a raw base usually disappoints. Note DPO's very small
+learning rate (`5e-6`) compared to SFT.
+:::
