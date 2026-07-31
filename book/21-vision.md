@@ -74,27 +74,36 @@ accordingly.
 
 ---
 
-## 🧑‍💻 The universal recipe applies here too
+## 🧑‍💻 The same recipe reads manuscripts and X-rays
 
-Whether it's a manuscript image for OCR or a medical X-ray, the pattern is the
-same: **encoder → head**, using transfer learning.
+Whether it's a Sanskrit manuscript page for OCR or a medical X-ray, the pattern is
+identical: **encoder → head**, using transfer learning.
 
 ```{mermaid}
 flowchart LR
     A[🖼️ image] --> B[vision encoder<br/>ResNet / ViT]
     B --> C[embeddings]
-    C --> D["head or projector"]
+    C --> D[head or projector]
     D --> E[label / text]
 ```
 
 For **manuscript OCR**, the transfer-learning spectrum is your friend: start from
 a pretrained vision (or vision-language) model and fine-tune on your script — you
-need far less labelled data than training from scratch. The same encoder that
-reads an X-ray reads a page of Devanagari; only the head and the training data
-change.
+need far less labelled data than training from scratch. A modern route is to
+fine-tune a small **vision-language OCR model** (TrOCR-style: a ViT encoder + a
+text decoder) on *(manuscript image → transliteration)* pairs, which is the same
+encoder→decoder shape as the medical VLM in [Step 24](24-medical.md).
 
-:::{tip} Reuse the medical vision code
-The transfer-learning + LoRA pattern for images is shown with runnable code in
-[Step 24 — Medical](24-medical.md) (🦴 X-ray section). It transfers directly to
-manuscript classification and OCR fine-tuning.
+:::{tip} ♻️ Reuse the runnable vision code
+The transfer-learning + class-weighting pattern for 2D images is shown with a
+**tested, runnable file** in [Step 24 — Medical (🦴 X-ray)](24-medical.md):
+[`code/step-24-medical-xray/`](https://github.com/AmitXShukla/LLM/tree/main/code/step-24-medical-xray). It transfers directly to manuscript
+classification; only the head and the training data change.
+:::
+
+:::{caution} 🕵️ Manuscripts have their own "gotchas"
+Faded ink, bleed-through from the reverse side, marginalia, and inconsistent
+scripts across scribes. Just like the [data-audit step](07-clean-data.md) for
+text, budget real time for cleaning and for building a small, honest evaluation
+set with a native reader.
 :::

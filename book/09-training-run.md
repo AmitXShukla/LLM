@@ -138,39 +138,93 @@ explain to someone else.
 
 ---
 
-## 🧑‍💻 Runnable code for this step
+## 🧑‍💻 The training loop, in full
 
-:::{tip} The full, tested file
-[`code/step-01-tiny-transformer/train_sanskrit_gpt.py`](https://github.com/AmitXShukla/LLM/tree/main/code/step-01-tiny-transformer) is the complete ~250-line model + training loop + sampler. Run `python train_sanskrit_gpt.py --smoke` for a 30-second sanity run.
-:::
-
-The entire training loop is four lines repeated a few thousand times. If you
-understand these four, you understand training:
+The whole of training is four lines repeated a few thousand times. If you
+understand these four, you understand how *every* neural network is trained. Full
+file: [`code/step-01-tiny-transformer/train_sanskrit_gpt.py`](https://github.com/AmitXShukla/LLM/tree/main/code/step-01-tiny-transformer).
 
 ```python
-for step in range(max_iters):
-    xb, yb = get_batch(train_data)   # a window of aksharas, and the same shifted by 1
-    _, loss = model(xb, yb)          # forward: predict, measure surprise (cross-entropy)
-    optimizer.zero_grad()            # clear last step's gradients
-    loss.backward()                  # backward: blame each weight for the error
-    optimizer.step()                 # nudge every weight a little the right way
+for it in range(cfg.max_iters + 1):
+    if it % cfg.eval_interval == 0:
+        losses = estimate_loss(model, splits, cfg, device)   # check train & val loss
+        print(f"iter {it:>5}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+    xb, yb = get_batch(splits["train"], cfg, device)         # a batch of aksharas
+    _, loss = model(xb, yb)                                   # forward: predict, measure surprise
+    optimizer.zero_grad(set_to_none=True)                    # clear last step's gradients
+    loss.backward()                                          # backward: blame each weight
+    optimizer.step()                                         # nudge every weight the right way
 ```
 
 ```{mermaid}
 flowchart LR
-    A[batch of aksharas] --> B[model predicts<br/>next akshara]
-    B --> C[loss = how surprised?]
-    C --> D[loss.backward<br/>compute gradients]
-    D --> E[optimizer.step<br/>nudge weights]
+    A[📥 batch of aksharas] --> B[🔮 model predicts next]
+    B --> C[😲 loss = how surprised?]
+    C --> D[⬅️ loss.backward: gradients]
+    D --> E[🎚️ optimizer.step: nudge weights]
     E --> A
 ```
 
-:::{note} What to watch 👀
-**Train loss** should fall then flatten. **Val loss** should follow, then turn
-*up* when you start overfitting. On a tiny corpus that happens fast — that's not
-a bug, it's the model telling you *"feed me more data."*
+`loss.backward()` is autograd computing the gradient of the loss with respect to
+every parameter (the chain rule, automated). `AdamW` turns those gradients into
+smart weight updates. That's it — that's "training a neural net."
+
+### 🧪 Measuring honestly (`estimate_loss`)
+
+We periodically check a held-out **val** split. If train loss keeps dropping while
+val loss climbs, you're *overfitting* — memorising the corpus instead of learning
+the language.
+
+```python
+@torch.no_grad()
+def estimate_loss(model, splits, cfg, device):
+    model.eval()
+    out = {}
+    for name, data in splits.items():
+        losses = torch.zeros(cfg.eval_iters)
+        for k in range(cfg.eval_iters):
+            xb, yb = get_batch(data, cfg, device)
+            _, loss = model(xb, yb)
+            losses[k] = loss.item()
+        out[name] = losses.mean().item()
+    model.train()
+    return out
+```
+
+### 🚀 Putting it together (`main`)
+
+```python
+text = Path(args.corpus).read_text(encoding="utf-8")
+tok  = build_tokenizer(text, args.tokenizer)             # grapheme by default (Step 4)
+data = torch.tensor(tok.encode(text), dtype=torch.long)
+n = int(0.9 * len(data))
+splits = {"train": data[:n], "val": data[n:]}            # 90/10 split
+
+model = SanskritGPT(cfg, tok.vocab_size).to(device)
+print(f"parameters: {sum(p.numel() for p in model.parameters())/1e6:.2f} M")
+optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate)
+# ... the training loop above ...
+
+# then sample from the trained model:
+start = torch.tensor([tok.encode("विद्या")], dtype=torch.long, device=device)
+out = model.generate(start, max_new_tokens=200, temperature=0.8, top_k=20)
+print(tok.decode(out[0].tolist()))
+```
+
+:::{note} 👀 What healthy training looks like
+```
+iter     0: train loss 4.7521, val loss 4.7503
+iter   500: train loss 2.4133, val loss 2.98
+iter  3000: train loss 1.31xx, val loss 2.6xx   ← val flattening/rising = overfitting on a tiny corpus
+```
+On 20 verses it overfits almost instantly — and that is the lesson, not a bug.
+**The model is data-starved, not brain-starved.** The fix is more data, which is
+what [Steps 6–7](06-collect-data.md) are all about.
 :::
 
-:::{seealso} Go deeper
-- 🧠 Teaching notes (every concept, mapped to the code): [`docs/notes/weekend1-tiny-transformer-teaching.md`](https://github.com/AmitXShukla/LLM/tree/main/docs/notes/weekend1-tiny-transformer-teaching.md)
+:::{important} ✅ Read the output charitably
+Early samples are gibberish — but *valid* gibberish: every "word" is built from
+whole aksharas, no orphan vowel signs, because of the grapheme tokenizer from
+[Step 4](04-sanskrit-tokenizer.md). Nonsense-but-valid means the pipeline works;
+it just needs more data to become nonsense-that-means-something.
 :::

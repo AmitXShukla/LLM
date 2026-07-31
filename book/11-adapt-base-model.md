@@ -165,54 +165,120 @@ much of its general ability.
 
 ---
 
-## 🧑‍💻 Runnable code for this step
+## 🧑‍💻 The complete fine-tuning script, explained
 
-:::{tip} The full, tested files
-[`code/step-11-adapt-base-model/`](https://github.com/AmitXShukla/LLM/tree/main/code/step-11-adapt-base-model) has three staged scripts. Start with the safe dry run: `python 02_finetune_lora.py --dry-run` (builds everything, downloads nothing).
+Full files: [`code/step-11-adapt-base-model/`](https://github.com/AmitXShukla/LLM/tree/main/code/step-11-adapt-base-model) (`01_make_dataset.py`, `02_finetune_lora.py`, `03_chat.py`). Start with the safe dry run: `python 02_finetune_lora.py --dry-run` builds everything and downloads nothing.
+
+:::{note} 🎓 The one-sentence difference from Part 1
+[Steps 1–9](01-build-transformer.md) were **pretraining** — learning the language
+from scratch. This is **fine-tuning** — taking a model that *already* knows
+language and teaching it a *behaviour*. You're no longer teaching Sanskrit; you're
+teaching "when asked to translate, translate." The heavy lifting was already paid
+for by whoever pretrained the base.
 :::
 
-### The big idea: LoRA 🧩
+### 🧩 The big idea: LoRA (why this fits on one machine)
 
-Fine-tuning *all* of a billion weights needs a cluster. **LoRA** freezes the giant
-original weight `W` and trains two tiny matrices whose low-rank product is added
-to it — well under 1% of the parameters:
+Fine-tuning *all* of a billion weights needs a cluster (weights + gradients +
+optimizer state ≈ 4× the model). **LoRA** freezes every original weight `W` and,
+beside it, trains two skinny matrices `A` and `B` whose low-rank product is added
+to `W`. You train **well under 1%** of the parameters.
 
 ```{mermaid}
 flowchart LR
-    X([input x]) --> W["W · x — FROZEN"]
-    X --> A["A · x — down-project rank r"]
-    A --> B["B · (A·x) — up-project"]
+    X([input x]) --> W["W · x — ❄️ FROZEN"]
+    X --> A["A · x — down-project rank r 🔥"]
+    A --> B["B · A·x — up-project 🔥"]
     W --> P((＋))
     B --> P
     P --> Y([output = W + B·A])
 ```
 
+Why does something so small work? Because *adapting behaviour* doesn't require
+rewriting what the model knows — it only needs to steer it in a few directions,
+and that steer is low-rank.
+
 ```python
 from peft import LoraConfig
 lora = LoraConfig(
-    r=16, lora_alpha=32, lora_dropout=0.05,
+    r=16,                          # adapter capacity (8–32 typical)
+    lora_alpha=32,                 # effective strength ≈ alpha / r
+    lora_dropout=0.05,
     bias="none", task_type="CAUSAL_LM",
     target_modules="all-linear",   # robust across Qwen / Gemma / Llama / Sarvam
 )
 ```
 
-**QLoRA** goes further: load the frozen base in 4-bit so a 7B model fits on one
-GPU. On your DGX Spark, use **bf16, never fp16**.
+### 🗜️ QLoRA: load the frozen base in 4-bit
+
+The base is never updated, so why store it at full precision? QLoRA quantizes it
+to 4-bit (`nf4`), cutting its memory ~4×, while the adapters stay in bf16.
 
 ```python
 import torch
 from transformers import BitsAndBytesConfig
-qlora = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
-                           bnb_4bit_use_double_quant=True,
-                           bnb_4bit_compute_dtype=torch.bfloat16)
+qlora = BitsAndBytesConfig(
+    load_in_4bit=True, bnb_4bit_quant_type="nf4",
+    bnb_4bit_use_double_quant=True,
+    bnb_4bit_compute_dtype=torch.bfloat16,   # bf16 compute — never fp16 on Blackwell
+)
 ```
 
-:::{important} Prove it worked
-Call `trainer.model.print_trainable_parameters()`. If it says ~100%, your adapter
-didn't attach. It should read *well under 1%*. 🎯
+### 🎯 The training config — and the loss that matters
+
+The SFT loss is the **exact same next-token cross-entropy** you used in
+[Step 9](09-training-run.md) — with one addition: `completion_only_loss=True`
+*masks the prompt tokens*, so the model is graded only on producing the answer,
+not on re-typing the question.
+
+```python
+from trl import SFTConfig, SFTTrainer
+cfg = SFTConfig(
+    output_dir="./adapter", num_train_epochs=3,
+    per_device_train_batch_size=2, gradient_accumulation_steps=8,  # effective batch = 16
+    learning_rate=2e-4,            # LoRA tolerates a higher LR than full fine-tuning
+    lr_scheduler_type="cosine", warmup_ratio=0.03,
+    max_length=1024,
+    completion_only_loss=True,     # ← score the answer, not the parroted question
+    gradient_checkpointing=True,   # trade a little compute for a lot of memory
+    bf16=True, report_to="none",
+)
+```
+
+### 🚂 Load base + train (the whole thing)
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+tok = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-1.5B-Instruct")
+if tok.pad_token is None:
+    tok.pad_token = tok.eos_token
+model = AutoModelForCausalLM.from_pretrained(
+    "Qwen/Qwen2.5-1.5B-Instruct", quantization_config=qlora,
+    dtype=torch.bfloat16, device_map="auto")
+
+trainer = SFTTrainer(model=model, args=cfg, train_dataset=ds,
+                     peft_config=lora, processing_class=tok)
+trainer.model.print_trainable_parameters()   # sanity: should read WELL under 1%
+trainer.train()
+trainer.save_model("./adapter")               # saves ONLY the tiny adapter (~tens of MB)
+```
+
+:::{important} ✅ Prove the LoRA actually attached
+`print_trainable_parameters()` should show a fraction of a percent. If it says
+~100%, the adapter didn't attach (you forgot `peft_config`, or targeted the wrong
+modules). Always eyeball this line.
 :::
 
-:::{seealso} Go deeper
-- 🗺️ Architecture diagram: [`docs/notes/finetuning-architecture-diagram.md`](https://github.com/AmitXShukla/LLM/tree/main/docs/notes/finetuning-architecture-diagram.md)
-- 🚀 Teaching notes: [`docs/notes/weekend2-finetuning-teaching.md`](https://github.com/AmitXShukla/LLM/tree/main/docs/notes/weekend2-finetuning-teaching.md)
+:::{caution} 🧪 Honest expectation on a tiny dataset
+On 15 examples, `03_chat.py --compare` may show the base and tuned models looking
+almost identical. That's not a bug — it's the same lesson as Part 1: **the model
+isn't the bottleneck, the data is.** The real work is scaling your instruction set
+to a few hundred hand-checked pairs.
+:::
+
+:::{seealso} 📚 Follow-along resources
+- 🚀 Teaching notes (base vs instruct, LoRA, SFT, DPO): [`docs/notes/weekend2-finetuning-teaching.md`](https://github.com/AmitXShukla/LLM/tree/main/docs/notes/weekend2-finetuning-teaching.md)
+- 🗺️ Architecture diagrams: [`docs/notes/finetuning-architecture-diagram.md`](https://github.com/AmitXShukla/LLM/tree/main/docs/notes/finetuning-architecture-diagram.md)
+- 📘 Deep dive (58-page PDF): [`docs/reports/fine-tuning-foundation-models.pdf`](https://github.com/AmitXShukla/LLM/tree/main/docs/reports/fine-tuning-foundation-models.pdf)
 :::

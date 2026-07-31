@@ -104,53 +104,150 @@ to build a research prototype and to talk sensibly with the people who can.
 
 ---
 
-## 🧑‍💻 Runnable code for this step
+## 🧑‍💻 The universal recipe: encoder → head
 
-Everything you learned about fine-tuning language models carries straight over:
-it's still **encoder → head**, transfer learning, and the same imbalance
-discipline. Only the encoder and the input change.
+Here is the idea that makes ECG, X-ray, and video feel like *one* subject instead
+of three: **almost every model is an encoder that turns raw input into vectors,
+then a head (or decoder) that produces the output.** Fine-tuning is just "adapt
+part of that stack to my data" — the exact same transfer-learning spectrum you met
+with LoRA in [Step 11](11-adapt-base-model.md).
 
-### ❤️ Heartbeat → arrhythmia (1D signal)
+```{mermaid}
+flowchart LR
+    A[raw input<br/>❤️ ECG · 🦴 X-ray · 🎥 video] --> B[ENCODER<br/>1D-CNN / ResNet / ViT]
+    B --> C[embeddings]
+    C --> D[HEAD<br/>classifier or decoder]
+    D --> E[label / report]
+```
 
-A 1D CNN on 12-lead ECG (datasets: **PTB-XL**, **MIT-BIH**). The key clinical
-move is an **imbalance-aware loss** — dangerous arrhythmias are rare, so accuracy
-lies; weight the loss by inverse class frequency and evaluate with **AUPRC**, not
-accuracy:
+:::{note} 🎓 Same skills, new encoder
+Everything from the language chapters carries over: transfer learning, the
+freeze-vs-LoRA-vs-full choice, and the imbalance discipline. Only the encoder and
+the input preprocessing change. If you can fine-tune an LLM, you can fine-tune
+these.
+:::
+
+---
+
+## ❤️ Heartbeat → arrhythmia (a 1D signal)
+
+An ECG is a time series of voltages, usually 12 leads. Real datasets: **PTB-XL**
+(~21k clinical 12-lead recordings) and **MIT-BIH**. The encoder is a **1D CNN** —
+`Conv1d` slides over *time* instead of space. Full runnable file (with synthetic
+data so it runs today): [`code/step-24-medical-ecg/ecg_arrhythmia.py`](https://github.com/AmitXShukla/LLM/tree/main/code/step-24-medical-ecg).
+
+### 🧱 A 1D ResNet block
+
+```python
+import torch.nn as nn
+
+class ResBlock1D(nn.Module):
+    def __init__(self, c_in, c_out, stride=1):
+        super().__init__()
+        self.conv1 = nn.Conv1d(c_in, c_out, 7, stride, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm1d(c_out)
+        self.conv2 = nn.Conv1d(c_out, c_out, 7, 1, padding=3, bias=False)
+        self.bn2 = nn.BatchNorm1d(c_out)
+        self.down = (nn.Sequential(nn.Conv1d(c_in, c_out, 1, stride, bias=False),
+                                   nn.BatchNorm1d(c_out))
+                     if (stride != 1 or c_in != c_out) else nn.Identity())
+        self.act = nn.ReLU(inplace=True)
+    def forward(self, x):
+        r = self.down(x)
+        x = self.act(self.bn1(self.conv1(x)))
+        x = self.bn2(self.conv2(x))
+        return self.act(x + r)      # residual — same trick as the transformer block
+```
+
+### ⚖️ The clinical move that matters most: imbalance
+
+Dangerous arrhythmias are **rare**. A model that always says "normal" can score
+98% accuracy and catch *zero* arrhythmias. So we weight the loss by inverse class
+frequency and evaluate with **per-class recall / AUPRC**, never accuracy:
 
 ```python
 import torch, torch.nn as nn
-# rare classes get up-weighted so the model can't ignore them
-class_counts = torch.tensor([8000., 500., 1200., 300., 900.])
-weights = class_counts.sum() / (len(class_counts) * class_counts)
-criterion = nn.CrossEntropyLoss(weight=weights)   # evaluate with AUPRC + per-class recall
+counts  = torch.tensor([4000., 250., 600., 150., 500.])       # very imbalanced
+weights = counts.sum() / (len(counts) * counts)               # up-weight rare classes
+criterion = nn.CrossEntropyLoss(weight=weights)               # evaluate with recall, not accuracy
 ```
 
-### 🦴 X-ray → fracture / findings (2D image)
+:::{warning} 🚨 Accuracy is a trap in healthcare
+This is the single most common mistake in clinical ML interviews and projects.
+Whenever the important class is rare, report **recall, F1, AUROC, and especially
+AUPRC** — and pick your decision threshold by the clinical cost of a miss.
+:::
 
-Transfer learning from a pretrained backbone (or a *medical* one like MedSigLIP),
-then LoRA-fine-tune — clinical datasets are small, so PEFT shines:
+---
+
+## 🦴 X-ray → fracture / findings (a 2D image)
+
+Datasets: **ChestX-ray14**, **CheXpert**, **MURA**. The recipe is *transfer
+learning*: take a pretrained backbone (or a **medical** one like MedSigLIP),
+replace the head, fine-tune. Full runnable file:
+[`code/step-24-medical-xray/xray_finetune.py`](https://github.com/AmitXShukla/LLM/tree/main/code/step-24-medical-xray).
 
 ```python
 import torch, torch.nn as nn, torchvision
-m = torchvision.models.resnet50(weights="IMAGENET1K_V2")
-m.fc = nn.Linear(m.fc.in_features, 2)             # fracture / no-fracture
+
+def build_model(n_classes=2, pretrained=True, freeze_backbone=False):
+    m = torchvision.models.resnet50(weights="IMAGENET1K_V2" if pretrained else None)
+    if freeze_backbone:                        # "linear probing": train only the head
+        for p in m.parameters():
+            p.requires_grad = False
+    m.fc = nn.Linear(m.fc.in_features, n_classes)   # new head: fracture / normal
+    return m
+
 criterion = nn.CrossEntropyLoss(weight=torch.tensor([1.0, 3.0]))  # up-weight rare "fracture"
 ```
 
-:::{warning} Watch for shortcut learning 🩻
-Medical models love spurious shortcuts — a scanner artifact, a laterality token,
-a hospital marker burned into the image. Always check **Grad-CAM** saliency maps
-and evaluate on **external** data from a different site before believing your
-numbers.
+:::{caution} 🩻 Watch for "shortcut learning"
+Medical models love spurious shortcuts — a scanner artifact, a laterality token, a
+hospital marker burned into the image. Always inspect **Grad-CAM** saliency maps
+(does the model look at the *anatomy*?) and evaluate on **external** data from a
+different site before believing your numbers. And never horizontally flip a chest
+X-ray — it puts the heart on the wrong side.
 :::
 
-:::{important} Generative vs. discriminative in the clinic
-A **classifier** (ECG/X-ray) gives a calibrated number for triage — needs AUPRC
-and calibration. A **vision-language model** (MedGemma) drafts a report a
-clinician edits — needs *faithfulness* and hallucination control. Use each where
-its failure mode is acceptable.
+:::{tip} 💊 Small data? Reach for a medical foundation model
+Clinical datasets are small, so PEFT shines here just like LoRA did for text.
+Start from **MedSigLIP** (the ~400M encoder behind MedGemma) or TorchXRayVision
+and LoRA-fine-tune — you need far less data and get better calibration.
 :::
 
-:::{seealso} Full multimodal chapters
-📘 [`docs/reports/fine-tuning-foundation-models.pdf`](https://github.com/AmitXShukla/LLM/tree/main/docs/reports/fine-tuning-foundation-models.pdf) — Part IV (ECG, X-ray, video, and fine-tuning a medical VLM with LoRA).
+---
+
+## 🖼️➡️📝 Generative: fine-tuning a medical VLM (MedGemma)
+
+A **vision-language model** reads an image *and* a question and writes *text* — a
+radiology report, a visual answer. It's the encoder→projector→LLM pattern:
+**MedGemma** is Gemma 3 with **MedSigLIP** as its eyes. You fine-tune it on
+*(image, prompt, target-text)* triples — mechanically it's LoRA SFT
+([Step 11](11-adapt-base-model.md)) with the image passed through the processor.
+
+```python
+import torch
+from transformers import AutoProcessor, AutoModelForImageTextToText
+from peft import LoraConfig, get_peft_model
+
+proc  = AutoProcessor.from_pretrained("google/medgemma-4b-it")
+model = AutoModelForImageTextToText.from_pretrained(
+    "google/medgemma-4b-it", dtype=torch.bfloat16, device_map="auto")
+model = get_peft_model(model, LoraConfig(     # keep the heavy vision tower frozen
+    r=16, lora_alpha=32, task_type="CAUSAL_LM",
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj"]))
+```
+
+:::{important} 🩺 Two failure modes, two evaluations
+A **classifier** (ECG/X-ray) gives a calibrated number for triage → judge it with
+**AUPRC + calibration**. A **VLM** drafts a report a clinician edits → judge it
+with **faithfulness / hallucination** checks and clinical-entity metrics like
+**RadGraph F1**, not fluency. Use each where its failure mode is acceptable, and
+keep a human in the loop.
+:::
+
+:::{seealso} 📚 Follow-along resources
+- ❤️ Runnable ECG model: [`code/step-24-medical-ecg/`](https://github.com/AmitXShukla/LLM/tree/main/code/step-24-medical-ecg)
+- 🦴 Runnable X-ray model: [`code/step-24-medical-xray/`](https://github.com/AmitXShukla/LLM/tree/main/code/step-24-medical-xray)
+- 📘 Deep dive (Part III & IV of the 58-page PDF): [`docs/reports/fine-tuning-foundation-models.pdf`](https://github.com/AmitXShukla/LLM/tree/main/docs/reports/fine-tuning-foundation-models.pdf)
 :::

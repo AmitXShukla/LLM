@@ -114,6 +114,9 @@ hardware, and time).
 | 🧹 [`code/step-06-data-audit/`](code/step-06-data-audit/) | PDFs → clean corpus, with an OCR health check | Steps 6–7 |
 | 🚀 [`code/step-11-adapt-base-model/`](code/step-11-adapt-base-model/) | LoRA/QLoRA fine-tuning: dataset → train → chat | Steps 11–13 |
 | 🧩 [`code/step-14-reasoning/`](code/step-14-reasoning/) | Verifiable rewards + GRPO, and a distillation set | Steps 14, 17 |
+| ❤️ [`code/step-24-medical-ecg/`](code/step-24-medical-ecg/) | 1D-CNN heartbeat → arrhythmia, imbalance-aware | Step 24 |
+| 🦴 [`code/step-24-medical-xray/`](code/step-24-medical-xray/) | X-ray → fracture by transfer learning | Steps 21, 24 |
+| 🎥 [`code/step-22-video/`](code/step-22-video/) | Per-frame CNN + temporal Transformer for behaviour | Step 22 |
 
 ```bash
 # quickest taste — see the Sanskrit tokenization "gotcha" in 5 seconds

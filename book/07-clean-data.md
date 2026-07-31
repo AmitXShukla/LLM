@@ -140,37 +140,68 @@ a clean train/validation/test split.
 
 ---
 
-## 🧑‍💻 Runnable code for this step
+## 🧑‍💻 The data-audit script, in full
 
-:::{tip} The full, tested file
-[`code/step-06-data-audit/prepare_data.py`](https://github.com/AmitXShukla/LLM/tree/main/code/step-06-data-audit) turns PDFs/text in `./data` into one clean `corpus.txt` — and, crucially, *measures* how much real Devanagari it found so you know which files need OCR.
-:::
+Full file: [`code/step-06-data-audit/prepare_data.py`](https://github.com/AmitXShukla/LLM/tree/main/code/step-06-data-audit). It turns PDFs/text in `./data` into one clean `corpus.txt` — and, crucially, *tells you the truth* about which files it couldn't read.
 
-The honest part of this script is that it doesn't pretend a scanned PDF worked.
-It scores each file and tells you the truth:
+### 📏 First, measure how much real Devanagari you got
+
+This is the health check that stops you from silently training on garbage.
 
 ```python
 DEV_START, DEV_END = 0x0900, 0x097F      # the Devanagari Unicode block
 
+def is_devanagari(ch):
+    return DEV_START <= ord(ch) <= DEV_END
+
 def devanagari_ratio(text):
     meaningful = [c for c in text if not c.isspace()]
-    if not meaningful: return 0.0
-    dev = sum(1 for c in meaningful if DEV_START <= ord(c) <= DEV_END)
+    if not meaningful:
+        return 0.0
+    dev = sum(1 for c in meaningful if is_devanagari(c))
     return dev / len(meaningful)
-# ...
-#   sample_corpus.txt   devanagari=100.0%  chars_kept=845   [OK]
-#   old_scan.pdf        devanagari=  2.3%  chars_kept= 11    [⚠ LOW → needs OCR]
+```
+
+### 🧼 Then clean — and NFC-normalize (the important line)
+
+```python
+import unicodedata
+DANDA, DOUBLE_DANDA = "\u0964", "\u0965"      # । and ॥ — Sanskrit's "full stops"
+
+def clean(text):
+    text = unicodedata.normalize("NFC", text)   # ← compose 'क'+'ि' consistently every time
+    kept = [ch for ch in text
+            if is_devanagari(ch) or ch in (DANDA, DOUBLE_DANDA) or ch.isspace()]
+    cleaned = "".join(kept)
+    lines = [" ".join(line.split()) for line in cleaned.splitlines()]
+    return "\n".join(ln for ln in lines if ln) + "\n"
+```
+
+:::{important} 🧩 Why NFC normalization is not optional
+Skip it and your tokenizer will think two *visually identical* syllables are
+different tokens, because the same akshara can be stored as different code-point
+sequences. NFC folds them to one canonical form. This one line silently fixes a
+whole class of "why is my vocab so big?" bugs.
+:::
+
+### 🚦 The audit output tells you what to fix
+
+```text
+Scanning 3 file(s) in ./data …
+  sample_corpus.txt   devanagari=100.0%  chars_kept=845   [OK]
+  gita_clean.txt      devanagari= 98.7%  chars_kept=41210 [OK]
+  old_manuscript.pdf  devanagari=  2.3%  chars_kept=11    [⚠ LOW]
 ```
 
 ```{mermaid}
 flowchart LR
     A[📄 PDFs / text in ./data] --> B{Devanagari<br/>ratio ≥ 30%?}
     B -->|yes ✅| C[clean + NFC normalize] --> D[(corpus.txt)]
-    B -->|no ⚠️| E[OCR with Tesseract<br/>-l san+hin] --> A
+    B -->|no ⚠️| E[OCR with Tesseract<br/>tesseract page.png out -l san+hin] --> A
 ```
 
-:::{warning} This is where projects actually get stuck
-Not the neural network — the data. Half of real Sanskrit PDFs are scanned images
-or legacy (non-Unicode) fonts that extract as garbage. Budget most of your time
-here. 🧹
+:::{warning} 🧹 This is where real projects get stuck — not the neural network
+Half of real Sanskrit PDFs are **scanned images** (extract to almost nothing) or
+**legacy non-Unicode fonts** (extract to Latin-looking garbage like `Ÿ‚Ÿàd`).
+Both need OCR. Budget most of your time here; a clean corpus is the actual moat.
 :::

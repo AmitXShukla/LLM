@@ -25,6 +25,9 @@ pypdf          # PDF text extraction for the data audit (code/step-06)
 # PyTorch container; use bf16, never fp16.
 bitsandbytes
 
+# Multimodal healthcare code (Steps 21-22, 24)
+torchvision   # X-ray transfer learning + video backbone
+
 # Serving and quantization (Step 18)
 # vllm
 
