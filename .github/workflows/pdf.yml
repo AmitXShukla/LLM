@@ -1,0 +1,47 @@
+name: Build PDF
+
+# Builds a PDF of the whole book and attaches it as a downloadable artifact.
+# This one is manual, because the LaTeX install makes it slow.
+# Run it from the Actions tab, or when you tag a release.
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install MyST
+        run: npm install -g mystmd
+
+      - name: Install LaTeX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            texlive-latex-recommended \
+            texlive-latex-extra \
+            texlive-fonts-recommended \
+            texlive-xetex \
+            texlive-lang-indic \
+            texlive-lang-arabic \
+            latexmk
+        # texlive-lang-indic and texlive-lang-arabic are needed so that
+        # Devanagari and Urdu text render instead of appearing as blank boxes.
+
+      - name: Build the PDF
+        run: myst build --pdf
+
+      - name: Upload the PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: book-pdf
+          path: _build/exports/*.pdf
+          if-no-files-found: error

@@ -1,0 +1,28 @@
+# Python packages used by the code examples in code/.
+# The book itself is built with MyST (Node.js) and does not need these.
+#
+# Pin exact versions in your own environment. Version drift causes about half
+# of all "it worked yesterday" problems in this field. See Step 0.
+
+torch
+numpy
+transformers
+datasets
+tokenizers
+sentencepiece
+accelerate
+peft
+trl
+evaluate
+matplotlib
+tqdm
+
+# Serving and quantization (Step 18)
+# vllm
+
+# Deduplication (Step 7)
+# datasketch
+
+# Experiment tracking (Step 0) - pick one
+# wandb
+# trackio

@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+title: "Build Your Own Language Model: A step-by-step book for engineers, using Sanskrit and Urdu"
+message: "If you use this book, please cite it as below."
+type: book
+authors:
+  - given-names: AMIT
+    family-names: SHUKLA
+    email: X.com/@ashuklax
+repository-code: "https://github.com/AmitXshukla/llm"
+url: "https://AmitXShukla.github.io/llm/"
+license: CC-BY-4.0
+year: 2026
+keywords:
+  - large language models
+  - transformers
+  - Sanskrit
+  - Urdu
+  - low-resource languages

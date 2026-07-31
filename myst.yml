@@ -1,0 +1,107 @@
+# MyST configuration for "Build Your Own Language Model"
+# Docs: https://mystmd.org/guide/frontmatter
+version: 1
+
+project:
+  id: build-your-own-language-model
+  title: Build Your Own Language Model
+  subtitle: A step-by-step book for engineers, using Sanskrit and Urdu
+  description: >-
+    A beginner-friendly, step-by-step guide to building, adapting, and shipping
+    language models. Starts with a tiny transformer written by hand and ends
+    with a specialised Sanskrit model you can actually run.
+  keywords:
+    - large language models
+    - transformers
+    - Sanskrit
+    - Urdu
+    - tokenization
+    - low-resource languages
+    - fine-tuning
+  authors:
+    - name: Amit Shukla
+      email: X.com/@ashuklax
+      github: AmitXShukla
+      roles:
+        - Writing
+        - Conceptualization
+  github: https://github.com/AmitXShukla/llm
+  license:
+    content: CC-BY-4.0
+    code: MIT
+  open_access: true
+
+  # ---------------------------------------------------------------------------
+  # Table of contents.
+  # Add new chapters here. The order in this list is the order in the book.
+  # ---------------------------------------------------------------------------
+  toc:
+    - file: book/intro.md
+
+    - title: Part 1 - Understand the machine
+      children:
+        - file: book/00-setup.md
+        - file: book/01-build-transformer.md
+        - file: book/02-break-it.md
+
+    - title: Part 2 - Feed the machine
+      children:
+        - file: book/03-tokenizers.md
+        - file: book/04-sanskrit-tokenizer.md
+        - file: book/05-urdu-tokenizer.md
+        - file: book/06-collect-data.md
+        - file: book/07-clean-data.md
+
+    - title: Part 3 - Train it properly
+      children:
+        - file: book/08-modern-architecture.md
+        - file: book/09-training-run.md
+        - file: book/10-evaluation.md
+
+    - title: Part 4 - Make it useful
+      children:
+        - file: book/11-adapt-base-model.md
+        - file: book/12-instruction-tuning.md
+        - file: book/13-preference-tuning.md
+        - file: book/14-reasoning.md
+        - file: book/15-panini-neurosymbolic.md
+
+    - title: Part 5 - Make it small and fast
+      children:
+        - file: book/16-moe.md
+        - file: book/17-distillation.md
+        - file: book/18-quantization-serving.md
+        - file: book/19-long-context-rag.md
+
+    - title: Part 6 - Go beyond text
+      children:
+        - file: book/20-speech.md
+        - file: book/21-vision.md
+        - file: book/22-video.md
+        - file: book/23-agents.md
+        - file: book/24-medical.md
+
+    - title: Part 7 - Ship it
+      children:
+        - file: book/25-release.md
+
+    - title: Appendix
+      children:
+        - file: book/appendix/glossary.md
+        - file: book/appendix/hardware.md
+        - file: book/appendix/corpora.md
+        - file: book/appendix/landscape.md
+        - file: book/appendix/scratch-or-finetune.md
+        - file: book/appendix/reading.md
+
+site:
+  template: book-theme
+  title: Build Your Own Language Model
+  options:
+    favicon: book/images/favicon.ico
+    logo_text: Build Your Own LLM
+  nav:
+    - title: Book
+      url: /
+    - title: GitHub
+      url: https://github.com/AmitXShukla/llm
