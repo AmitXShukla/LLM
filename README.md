@@ -2,7 +2,7 @@
 
 ### A step-by-step book for engineers, using Sanskrit, Urdu, Tamil, Telgu
 
-[![Deploy Book](https://github.com/YOUR_GITHUB_USERNAME/sanskrit-llm-book/actions/workflows/deploy.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/sanskrit-llm-book/actions/workflows/deploy.yml)
+
 [![Content: CC BY 4.0](https://img.shields.io/badge/content-CC--BY--4.0-lightgrey.svg)](LICENSE)
 [![Code: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE-CODE)
 
