@@ -7,6 +7,15 @@ short_title: Introduction
 
 ### A step-by-step book for engineers, using Sanskrit and Urdu
 
+
+```{list-table}
+:widths: 30 30
+:align: center
+
+* - ![SanskritGPT](./images/sanskrit.jpg)
+  - ![UrduGPT](./images/urdu.jpg)
+```
+
 ---
 
 ## Who this book is for
@@ -23,7 +32,6 @@ the first time it appears, and all of them are collected in the
 [glossary](appendix/glossary.md) at the end.
 
 ---
-
 ## What you will build
 
 By the end of this book you will have built four things:
