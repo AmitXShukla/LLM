@@ -5,7 +5,7 @@ short_title: Introduction
 
 # Build Your Own Language Model
 
-### A step-by-step book for engineers, using Sanskrit and Urdu
+### A step-by-step book for AI Engineers, using Sanskrit, Tamil, Telgu, Kannada and Urdu
 
 
 ```{list-table}
