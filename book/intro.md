@@ -8,6 +8,7 @@ short_title: Introduction
 ### A step-by-step book for AI Engineers, using Sanskrit, Tamil, Telgu, Kannada and Urdu
 
 
+<!--
 ```{list-table}
 :widths: 30 30
 :align: center
@@ -15,6 +16,9 @@ short_title: Introduction
 * - ![SanskritGPT](./images/sanskrit.jpg)
   - ![UrduGPT](./images/urdu.jpg)
 ```
+-->
+
+![Language](./images/language.jpg)
 
 ---
 
